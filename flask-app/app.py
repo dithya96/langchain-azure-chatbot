@@ -81,19 +81,29 @@ def create_rag_chain():
             max_tokens=500
         )
         # 4. Retriever
-        retriever = vector_store.as_retriever(search_type="hybrid") # Add search_kwargs if needed e.g. {"k": 3}
-        # 5. Prompt Template
-        template = """You are an AI assistant. Answer the question based ONLY on the following context.
-If the context doesn't contain the answer, state that you don't have enough information from the provided documents.
-Be concise and cite source file names or document titles from the metadata if available (e.g., from a 'source' field in metadata).
+        retriever = vector_store.as_retriever(search_type="hybrid")
+        # Prompt Template
+        template = """You are an expert AI assistant for our application. Your goal is to be insightful and proactive.
+        Answer the question based on the following context.
+        If the context is empty or doesn't contain the answer, clearly state that you don't have enough information from the provided documents to answer.
+        Do not use any external information. Be concise in your primary answer.
 
-Context:
-{context}
+        Context:
+        {context}
 
-Question: {question}
+        Question: {question}
 
-Answer:
-"""
+        ---
+        Primary Answer:
+        [Provide a direct answer to the question based on the context. Cite sources if possible, e.g., (Source: application_docs.md)]
+
+        ---
+        Predictive Insights & Next Steps:
+        Based on the question and the provided context:
+        1. Are there any related topics or proactive suggestions you can offer?
+        2. If the context discusses an issue or a process, what are the key implications or next logical steps?
+        (If no specific predictive insights are apparent from the context, state "No specific predictive insights or next steps apparent from this context.")
+        """
         prompt = ChatPromptTemplate.from_template(template)
 
         # 6. RAG Chain
@@ -179,7 +189,4 @@ def health_check():
         }), 503  # 503 Service Unavailable is appropriate here
 
 if __name__ == '__main__':
-    # This is for local development.
-    # For production, use a WSGI server like Gunicorn or uWSGI.
-    # Example: gunicorn -w 4 -b 0.0.0.0:5000 app:app
     app.run(debug=True, host='0.0.0.0', port=5001) # Using port 5001 to avoid common conflicts
