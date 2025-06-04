@@ -1,0 +1,71 @@
+2025-06-03 14:10:00.100 INFO [main] com.bk.demo.transaction.TransactionServiceApplication : Starting TransactionServiceApplication using Java 17.0.1 on server-xyz with PID 12345 (/path/to/your/app.jar started by user app_user in /path/to/your/app)
+2025-06-03 14:10:00.105 INFO [main] com.bk.demo.transaction.TransactionServiceApplication : The following profiles are active: default
+2025-06-03 14:10:01.500 INFO [main] org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping : Mapped "{[/api/credit-transactions/test-generate],methods=[POST]}" onto public java.util.Map<java.lang.String, java.lang.Object> com.bk.demo.transaction.controller.CreditTransactionTestUtilController.generateTestTransactions(int)
+2025-06-03 14:10:01.505 INFO [main] org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping : Mapped "{[/api/credit],methods=[POST]}" onto public com.bk.demo.transaction.model.CreditTransaction com.bk.demo.transaction.controller.CreditTransactionController.create(com.bk.demo.transaction.model.CreditTransaction)
+2025-06-03 14:10:01.510 INFO [main] org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping : Mapped "{[/api/credit],methods=[GET]}" onto public java.util.List<com.bk.demo.transaction.model.CreditTransaction> com.bk.demo.transaction.controller.CreditTransactionController.getAll()
+2025-06-03 14:10:02.300 INFO [main] org.springframework.boot.web.embedded.tomcat.TomcatWebServer : Tomcat started on port(s): 8080 (http) with context path ''
+2025-06-03 14:10:02.310 INFO [main] com.bk.demo.transaction.TransactionServiceApplication : Started TransactionServiceApplication in 2.75 seconds (JVM running for 3.123)
+2025-06-03 14:10:15.000 INFO [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet : Initializing Servlet 'dispatcherServlet'
+2025-06-03 14:10:15.050 INFO [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet : Completed initialization in 50 ms
+
+2025-06-03 14:12:00.123 INFO [http-nio-8080-exec-1] com.bk.demo.transaction.controller.CreditTransactionTestUtilController : Received request to generate 5 test transactions.
+--- Transaction Generation Loop (i=0) ---
+2025-06-03 14:12:00.150 INFO [http-nio-8080-exec-1] com.bk.demo.transaction.service.CreditTransactionService : Attempting to save transaction with id: uuid-fake-001
+2025-06-03 14:12:00.155 INFO [http-nio-8080-exec-1] com.bk.demo.transaction.controller.CreditTransactionTestUtilController : Transaction uuid-fake-001 created successfully
+
+--- Transaction Generation Loop (i=1) ---
+2025-06-03 14:12:00.160 ERROR [http-nio-8080-exec-1] com.bk.demo.transaction.controller.CreditTransactionTestUtilController : Transaction with traceId uuid-fake-002 failed: jakarta.validation.ConstraintViolationException: Validation failed for classes [com.bk.demo.transaction.model.CreditTransaction] during persist time for groups [jakarta.validation.groups.Default, ]
+List of constraint violations:[
+	ConstraintViolationImpl{interpolatedMessage='must not be blank', propertyPath=accountNumber, rootBeanClass=class com.bk.demo.transaction.model.CreditTransaction, messageTemplate='{jakarta.validation.constraints.NotBlank.message}'}
+	ConstraintViolationImpl{interpolatedMessage='must not be null', propertyPath=amount, rootBeanClass=class com.bk.demo.transaction.model.CreditTransaction, messageTemplate='{jakarta.validation.constraints.NotNull.message}'}
+	ConstraintViolationImpl{interpolatedMessage='must not be blank', propertyPath=transactionType, rootBeanClass=class com.bk.demo.transaction.model.CreditTransaction, messageTemplate='{jakarta.validation.constraints.NotBlank.message}'}
+]
+jakarta.validation.ConstraintViolationException: accountNumber must not be blank, amount must not be null, transactionType must not be blank
+	at com.bk.demo.transaction.controller.CreditTransactionTestUtilController.generateTestTransactions(CreditTransactionTestUtilController.java:42)
+	... (stack trace continues)
+
+--- Transaction Generation Loop (i=2) ---
+2025-06-03 14:12:00.170 ERROR [http-nio-8080-exec-1] com.bk.demo.transaction.controller.CreditTransactionTestUtilController : Transaction with traceId uuid-fake-003 failed: java.lang.IllegalArgumentException: Entity must not be null.
+java.lang.IllegalArgumentException: Entity must not be null.
+	at org.springframework.util.Assert.notNull(Assert.java:201)
+	at org.springframework.data.jpa.repository.support.SimpleJpaRepository.save(SimpleJpaRepository.java:123) ~[spring-data-jpa-3.x.x.jar:3.x.x]
+	at com.bk.demo.transaction.service.DataProcessor.process(DataProcessor.java:20) ~[classes/:na]
+	at com.bk.demo.transaction.controller.CreditTransactionTestUtilController.generateTestTransactions(CreditTransactionTestUtilController.java:34) ~[classes/:na]
+	... (stack trace continues)
+
+--- Transaction Generation Loop (i=3) ---
+2025-06-03 14:12:00.185 ERROR [http-nio-8080-exec-1] com.bk.demo.transaction.controller.CreditTransactionTestUtilController : Transaction with traceId uuid-fake-004 failed: org.springframework.dao.DataAccessException: DB error can not access transaction with id cca3fc18-6376-4c9f-9443-b0e5b7070e5a
+org.springframework.dao.DataAccessException: DB error can not access transaction with id cca3fc18-6376-4c9f-9443-b0e5b7070e5a
+	at com.bk.demo.transaction.service.DataProcessor.process(DataProcessor.java:22) ~[classes/:na]
+	at com.bk.demo.transaction.controller.CreditTransactionTestUtilController.generateTestTransactions(CreditTransactionTestUtilController.java:34) ~[classes/:na]
+	... (stack trace continues)
+
+--- Transaction Generation Loop (i=4) ---
+2025-06-03 14:12:00.195 ERROR [http-nio-8080-exec-1] com.bk.demo.transaction.controller.CreditTransactionTestUtilController : Transaction with traceId uuid-fake-005 failed: java.lang.ArrayIndexOutOfBoundsException: Index 5 out of bounds for length 2
+java.lang.ArrayIndexOutOfBoundsException: Index 5 out of bounds for length 2
+	at com.bk.demo.transaction.service.DataProcessor.process(DataProcessor.java:25) ~[classes/:na]
+	at com.bk.demo.transaction.controller.CreditTransactionTestUtilController.generateTestTransactions(CreditTransactionTestUtilController.java:34) ~[classes/:na]
+	... (stack trace continues)
+
+2025-06-03 14:12:00.200 INFO [http-nio-8080-exec-1] com.bk.demo.transaction.controller.CreditTransactionTestUtilController : Test transaction generation complete. Success: 1, Failed: 4.
+2025-06-03 14:12:00.205 INFO [http-nio-8080-exec-1] o.s.web.servlet.DispatcherServlet : Completed 200 OK, view null, time 72ms
+
+2025-06-03 14:15:00.500 INFO [http-nio-8080-exec-2] com.bk.demo.transaction.controller.CreditTransactionController : Create credit transaction with id: user-tx-001
+2025-06-03 14:15:00.505 INFO [http-nio-8080-exec-2] com.bk.demo.transaction.service.CreditTransactionService : Attempting to save transaction with id: user-tx-001
+2025-06-03 14:15:00.515 INFO [http-nio-8080-exec-2] o.s.web.servlet.DispatcherServlet : Completed 200 OK, view null, time 30ms
+
+2025-06-03 14:16:00.600 INFO [http-nio-8080-exec-3] com.bk.demo.transaction.controller.CreditTransactionController : Create credit transaction with id: user-tx-002
+2025-06-03 14:16:00.605 INFO [http-nio-8080-exec-3] com.bk.demo.transaction.service.CreditTransactionService : Attempting to save transaction with id: user-tx-002
+2025-06-03 14:16:00.610 WARN [http-nio-8080-exec-3] org.hibernate.engine.jdbc.spi.SqlExceptionHelper : SQL Error: 23502, SQLState: 23502
+2025-06-03 14:16:00.612 ERROR [http-nio-8080-exec-3] org.hibernate.engine.jdbc.spi.SqlExceptionHelper : NULL not allowed for column "ACCOUNT_NUMBER"; SQL statement: insert into credit_transaction (...) values (...) [23502-214]
+2025-06-03 14:16:00.620 ERROR [http-nio-8080-exec-3] o.s.web.servlet.DispatcherServlet : Failed to complete request: org.springframework.dao.DataIntegrityViolationException: could not execute statement; SQL [n/a]; constraint [null]; nested exception is org.hibernate.exception.ConstraintViolationException: could not execute statement
+org.springframework.web.util.NestedServletException: Request processing failed; nested exception is org.springframework.dao.DataIntegrityViolationException: could not execute statement; SQL [n/a]; constraint [null]; nested exception is org.hibernate.exception.ConstraintViolationException: could not execute statement
+	... (full stack trace)
+Caused by: org.springframework.dao.DataIntegrityViolationException: could not execute statement; SQL [n/a]; constraint [null]; nested exception is org.hibernate.exception.ConstraintViolationException: could not execute statement
+	... (full stack trace)
+Caused by: org.hibernate.exception.ConstraintViolationException: could not execute statement
+	... (full stack trace)
+Caused by: org.h2.jdbc.JdbcSQLIntegrityConstraintViolationException: NULL not allowed for column "ACCOUNT_NUMBER"; SQL statement:
+insert into credit_transaction (account_number, amount, approval_date, approved_by, channel, currency, description, external_id, initiated_by, is_reversed, location, merchant_category, merchant_name, reference_number, remarks, reversal_date, reversal_reason, status, transaction_date, transaction_type, id) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) [23502-214]
+	... (full stack trace)
+2025-06-03 14:16:00.630 INFO [http-nio-8080-exec-3] o.s.web.servlet.DispatcherServlet : Completed 500 INTERNAL_SERVER_ERROR, view null, time 45ms
