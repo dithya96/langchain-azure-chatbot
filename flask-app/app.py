@@ -7,6 +7,12 @@ from langchain_community.vectorstores.azuresearch import AzureSearch
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+from langchain.chains import create_history_aware_retriever, create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_core.chat_history import BaseChatMessageHistory
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables.history import RunnableWithMessageHistory
 from openai import RateLimitError # Import specific error for handling
 import logging
 
@@ -22,21 +28,33 @@ load_dotenv()
 rag_chain_instance_global = None
 
 # --- Get variables for Embeddings Resource ---
-AZURE_OPENAI_ENDPOINT_EMBEDDINGS = os.getenv("AZURE_OPENAI_ENDPOINT_EMBEDDINGS")
-AZURE_OPENAI_API_KEY_EMBEDDINGS = os.getenv("AZURE_OPENAI_API_KEY_EMBEDDINGS")
+AZURE_OPENAI_ENDPOINT_EMBEDDINGS = os.getenv("AZURE_OPENAI_ENDPOINT")
+AZURE_OPENAI_API_KEY_EMBEDDINGS = os.getenv("AZURE_OPENAI_API_KEY")
 AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME")
-AZURE_OPENAI_API_VERSION_EMBEDDINGS = os.getenv("AZURE_OPENAI_API_VERSION_EMBEDDINGS")
+AZURE_OPENAI_API_VERSION_EMBEDDINGS = os.getenv("AZURE_OPENAI_EMBEDDING_API_VERSION")
 
 # --- Get variables for Chat Model Resource ---
-AZURE_OPENAI_ENDPOINT_CHAT = os.getenv("AZURE_OPENAI_ENDPOINT_CHAT")
-AZURE_OPENAI_API_KEY_CHAT = os.getenv("AZURE_OPENAI_API_KEY_CHAT")
+AZURE_OPENAI_ENDPOINT_CHAT = os.getenv("AZURE_OPENAI_ENDPOINT")
+AZURE_OPENAI_API_KEY_CHAT = os.getenv("AZURE_OPENAI_API_KEY")
 AZURE_OPENAI_CHAT_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME")
-AZURE_OPENAI_API_VERSION_CHAT = os.getenv("AZURE_OPENAI_API_VERSION_CHAT")
+AZURE_OPENAI_API_VERSION_CHAT = os.getenv("AZURE_OPENAI_API_VERSION")
 
 # --- Azure AI Search ---
 AZURE_AI_SEARCH_ENDPOINT = os.getenv("AZURE_AI_SEARCH_ENDPOINT")
 AZURE_AI_SEARCH_API_KEY = os.getenv("AZURE_AI_SEARCH_API_KEY")
 AZURE_AI_SEARCH_INDEX_NAME = os.getenv("AZURE_AI_SEARCH_INDEX_NAME")
+
+
+
+### Statefully manage chat history ###
+store = {}
+
+
+def get_session_history(session_id: str) -> BaseChatMessageHistory:
+    if session_id not in store:
+        store[session_id] = ChatMessageHistory()
+    return store[session_id]
+
 
 def create_rag_chain():
     """
@@ -81,33 +99,44 @@ def create_rag_chain():
             max_tokens=500
         )
         # 4. Retriever
-        retriever = vector_store.as_retriever(search_type="hybrid") # Add search_kwargs if needed e.g. {"k": 3}
-        # 5. Prompt Template
-        template = """You are an AI assistant. Answer the question based ONLY on the following context.
-If the context doesn't contain the answer, state that you don't have enough information from the provided documents.
-Be concise and cite source file names or document titles from the metadata if available (e.g., from a 'source' field in metadata).
+        retriever = vector_store.as_retriever() # Add search_kwargs if needed e.g. {"k": 3}
 
-Context:
-{context}
-
-Question: {question}
-
-Answer:
-"""
-        prompt = ChatPromptTemplate.from_template(template)
-
-        # 6. RAG Chain
-        def format_docs(docs):
-            return "\n\n".join(
-                f"Source: {doc.metadata.get('source', 'Unknown')}\nContent: {doc.page_content}" for doc in docs)
-
-        rag_chain = (
-                {"context": retriever | format_docs, "question": RunnablePassthrough()}
-                | prompt
-                | llm
-                | StrOutputParser()
+        ### Contextualize question ###
+        contextualize_q_system_prompt = """Given a chat history and the latest user question \
+        which might reference context in the chat history, formulate a standalone question \
+        which can be understood without the chat history. Do NOT answer the question, \
+        just reformulate it if needed and otherwise return it as is."""
+        contextualize_q_prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", contextualize_q_system_prompt),
+                MessagesPlaceholder("chat_history"),
+                ("human", "{input}"),
+            ]
         )
-        logger.info("RAG chain initialized successfully.")
+
+        history_aware_retriever = create_history_aware_retriever(
+            llm, retriever, contextualize_q_prompt
+        )
+
+
+        ### Answer question ###
+        qa_system_prompt = """You are an assistant for question-answering tasks. \
+        Use the following pieces of retrieved context to answer the question. \
+        If you don't know the answer, just say that you don't know. \
+        Use three sentences maximum and keep the answer concise.\
+
+        {context}"""
+        qa_prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", qa_system_prompt),
+                MessagesPlaceholder("chat_history"),
+                ("human", "{input}"),
+            ]
+        )
+        question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
+
+        rag_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
+
         return rag_chain
     except Exception as e:
         logger.error(f"Failed to initialize RAG chain: {e}", exc_info=True)
@@ -143,8 +172,24 @@ def chat_endpoint():
         user_query = data['query']
         logger.info(f"Received query: {user_query}")
 
+        session_id = data['session_id']
+        logger.info(f"Received session id: {session_id}")
+
         # Invoke the LangChain RAG chain
-        assistant_response = rag_chain_instance_global.invoke(user_query)
+        conversational_rag_chain = RunnableWithMessageHistory(
+            rag_chain_instance_global,
+            get_session_history,
+            input_messages_key="input",
+            history_messages_key="chat_history",
+            output_messages_key="answer",
+        )
+        assistant_response = conversational_rag_chain.invoke(
+            {"input": user_query},
+            config={"configurable": {"session_id": session_id}
+            },
+        )["answer"]
+
+        # assistant_response = rag_chain_instance_global.invoke(user_query)
         logger.info(f"Generated response for query '{user_query}'")
 
         return jsonify({"response": assistant_response})
@@ -183,3 +228,32 @@ if __name__ == '__main__':
     # For production, use a WSGI server like Gunicorn or uWSGI.
     # Example: gunicorn -w 4 -b 0.0.0.0:5000 app:app
     app.run(debug=True, host='0.0.0.0', port=5001) # Using port 5001 to avoid common conflicts
+
+
+#Previous RAG chain implemenation
+#         # 5. Prompt Template
+#         template = """You are an AI assistant. Answer the question based ONLY on the following context.
+# If the context doesn't contain the answer, state that you don't have enough information from the provided documents.
+# Be concise and cite source file names or document titles from the metadata if available (e.g., from a 'source' field in metadata).
+#
+# Context:
+# {context}
+#
+# Question: {question}
+#
+# Answer:
+# """
+#         prompt = ChatPromptTemplate.from_template(template)
+#
+#         # 6. RAG Chain
+#         def format_docs(docs):
+#             return "\n\n".join(
+#                 f"Source: {doc.metadata.get('source', 'Unknown')}\nContent: {doc.page_content}" for doc in docs)
+#
+#         rag_chain = (
+#                 {"context": retriever | format_docs, "question": RunnablePassthrough()}
+#                 | prompt
+#                 | llm
+#                 | StrOutputParser()
+#         )
+#         logger.info("RAG chain initialized successfully.")
