@@ -66,16 +66,29 @@ def get_cached_rag_chain():
     #Retriever
     retriever = vector_store.as_retriever(search_type="hybrid")
     #Prompt Template
-    template = """You are an AI assistant. Answer the question based ONLY on the following context.
-If the context doesn't contain the answer, state that you don't have enough information from the provided documents.
-Be concise and cite source file names or document titles from the metadata if available (e.g., from a 'source' field in metadata).
+    template = """You are an expert AI assistant for our application. Your goal is to be insightful and proactive.
+Answer the question based on the following context.
+If it is relevant, answer the question based ONLY on the provided context and cite sources if possible.
+If the context is not relevant or doesn't contain the answer, try to answer the question using your general knowledge.
+If you are using general knowledge because the context was not relevant or sufficient, mention that you are doing so.
+If you cannot answer the question using either the context or your general knowledge, state that you are unable to answer.
+
 
 Context:
 {context}
 
 Question: {question}
 
-Answer:
+---
+Primary Answer:
+[Provide a direct answer to the question based on the context. Cite sources if possible, e.g., (Source: application_docs.md)]
+
+---
+Predictive Insights & Next Steps:
+Based on the question and the provided context:
+1. Are there any related topics or proactive suggestions you can offer?
+2. If the context discusses an issue or a process, what are the key implications or next logical steps?
+(If no specific predictive insights are apparent from the context, state "No specific predictive insights or next steps apparent from this context.")
 """
     prompt = ChatPromptTemplate.from_template(template)
 
