@@ -1,0 +1,7 @@
+Decided:
+
+1. Can you tell me about error transactions from logs?
+2. What is the issue with transaction Id 5001? Which part of source code needs to be fixed? 
+3. As RTB Dev, I am seeing Bad Data exception for several transactions in logs. What should be my next step? //Runbook for RTB
+4. Can you provide transaction details for SSN 123456? //Risk & Control
+5. What causes Constrain Violation exception for Transaction Service? //Onboarding helper for new joiners
