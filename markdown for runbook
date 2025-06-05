@@ -1,0 +1,29 @@
+Acknowledge & Investigate:
+
+Acknowledge the alert or reported issue.
+Review the logs immediately surrounding the ERR101 message to gather context. Note the transactionId, timestamp, and any accompanying stack traces or error messages from services like CreditTransactionService or CreditTransactionController.
+Identify the specific data field(s) causing the "Bad Data" error if discernible from the logs (e.g., "Unable to get date from transaction date time field" as seen in application-2025-06-04.txt).
+Raise Incident:
+
+Based on the severity and impact (e.g., number of affected transactions, impact on critical functionality), raise an incident ticket in the designated incident management system (e.g., JIRA, PagerDuty, ServiceNow).
+Populate the incident ticket with:
+Error Code: ERR101 :: Bad Data
+Timestamp of first occurrence.
+Affected service(s) (e.g., transaction-service).
+Sample transactionId(s) if available.
+Relevant log snippets, including the ERR101 message and any stack traces.
+Suspected source of the bad data if identifiable (e.g., specific upstream system or input channel).
+Notify Relevant Teams:
+
+Payments Gateway Team:
+Notify the on-call Payments Gateway Team immediately via the established communication channel (e.g., dedicated Slack channel, direct message to on-call personnel).
+Provide the incident ticket number and a brief summary of the issue, emphasizing that transaction-service is encountering bad data that might be originating from or affecting gateway operations.
+Upstream Source(s):
+If the investigation points to a specific upstream system or data provider as the source of the bad data, notify the relevant team(s) responsible for that source.
+Provide them with the incident ticket number, examples of problematic data (if shareable), and timestamps.
+Request them to investigate on their end and confirm if they are sending malformed data.
+Monitor & Escalate:
+
+Continuously monitor the logs for recurrence of the ERR101 error.
+Update the incident ticket with any new findings or observations.
+If the issue is widespread or causing significant service degradation, escalate the incident according to the defined escalation matrix.
